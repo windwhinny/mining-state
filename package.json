@@ -1,0 +1,19 @@
+{
+  "name": "mining-state",
+  "description": "",
+  "version": "1.0.0",
+  "private": false,
+  "author": "windwhinny <windwhinny@gmail.com>",
+  "engines": {
+    "node": "0.10.x",
+    "npm": "1.2.x"
+  },
+  "main": "server.js",
+  "dependencies": {
+    "express": "~3.0.6",
+    "mongoose": "~3.6.20",
+    "connect-mongo": "~0.4.0",
+    "passport": "~0.1.17",
+    "passport-local": "~0.1.6"
+  }
+}
