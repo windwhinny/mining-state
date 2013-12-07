@@ -24,16 +24,17 @@ app.get('/',function(req,res,next){
 
 var db=null;
 var mongodbClient=new MongoClient(new MongoServer('localhost',27017));
-function init(done){
+function startServer(done){
 	mongodbClient.open(function(err,mongodbClient){
+    if(err)return done(err); 
 		mongodbClient
 			.db('mining')
 			.collection('record', function(err, collection) {
 				db=collection;
 				if(!db){
-					return done(new Error('can not connect to databse'));
-					startFetch();
+					return done(new Error('can not connect to database'));
 				}
+        startFetch();
 			});
 	})
 	app.listen(config.port);
@@ -54,7 +55,11 @@ var addToSaveQuery=(function(){
 						return
 					}
 					task.data=data;
-					db.save(task.data,task.done);
+					db.save(task.data,function(err,doc){
+            queuing=false;
+            next();
+            task.done(err,doc);
+          });
 				})
 				next();
 			}
@@ -72,6 +77,8 @@ var addToSaveQuery=(function(){
 	}
 })();
 function saveRecord(data){
+  data.confirmed_reward=Number(data.confirmed_reward);
+  data.unconfirm_reward=Number(data.unconfirm_reward);
 	var totaleReward=data.confirmed_reward+data.unconfirm_reward;
 	data.total_reward=totaleReward;
 	addToSaveQuery(data,function(data,done){
@@ -80,7 +87,15 @@ function saveRecord(data){
 			sort:['date']
 		},function(err,doc){
 			if(err)return done(err);
-			data.new_reward=data.total_reward-doc.total_reward;
+      data.new_reward=data.total_reward-(doc?doc.total_reward:0);
+
+      var workers=data.workers;
+      data.workers=[];
+      for(var i in workers){
+        var worker=workers[i];
+        worker.name=i;
+        data.workers.push(worker);
+      }
 			done(err,data);
 		})
 	},function(err,data){
@@ -88,7 +103,6 @@ function saveRecord(data){
 			throw err;
 			return;
 		}
-		console.log(data);
 	})
 }
 function startFetch(){
@@ -101,20 +115,19 @@ function startFetch(){
 			}
 			try{
 				var data=JSON.parse(data);
-				console.log(data);
 				saveRecord(data);
 			}catch (err){
 				throw err;
 				return
 			}
 		})
-	},1000);
+	},config.frequency);
 }
 
-init(function(err){
+startServer(function(err){
 	if(err){
 		console.error(err);
-		process.exit();
 	}
+  process.exit();
 });
 
